@@ -1,22 +1,32 @@
+import { PoolClient } from 'pg';
 import { query, unscopedQuery } from '../config/database';
-import { derivarPapeis } from '../utils/papeis';
+import { derivarPapelLegado } from '../utils/papeis';
+import type { PapelOrg, PapelMinisterio } from '../config/capacidades';
 
+/**
+ * `client` opcional: quando informado (por ex. dentro de um `withBypass`), roda
+ * nele em vez de cair no `query()` normal com escopo de tenant. Necessário pra
+ * fluxos pré-auth e cross-tenant legítimos (entrar por código) — sem sessão de
+ * org ainda, o RLS fail-closed bloqueia o INSERT.
+ */
 export async function createMembers(
     name: string,
     phone: string,
-    instrument: string,
+    instruments: string[],
     email: string,
-    role: string,
+    papelOrg: PapelOrg,
+    papelMinisterio: PapelMinisterio | null,
     password: string,
-    orgId: number) {
+    orgId: number,
+    client?: PoolClient) {
 
-    // Deriva os dois eixos de papel (spec 02) a partir do papel legado informado.
-    const { papelOrg, papelMinisterio } = derivarPapeis(role);
+    // Papel legado (coluna `papel`) é só um reflexo dos dois eixos reais agora — ver
+    // `derivarPapelLegado` sobre por que ele ainda existe.
+    const papelLegado = derivarPapelLegado(papelOrg, papelMinisterio);
 
-    const result = await query(
-        'INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-        [name, phone, instrument, email, role, papelOrg, papelMinisterio, password, orgId],
-    );
+    const sql = 'INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *';
+    const params = [name, phone, instruments, email, papelLegado, papelOrg, papelMinisterio, password, orgId];
+    const result = client ? await client.query(sql, params) : await query(sql, params);
 
     return result.rows[0];
 
@@ -31,26 +41,32 @@ export async function findByEmail(email: string) {
 }
 
 export async function findById(id: number) {
-    const membro = await query('SELECT id, nome, telefone, instrumento, email, papel, papel_org, papel_ministerio FROM membros WHERE ativo = true AND id = $1', [id])
+    const membro = await query('SELECT id, nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio FROM membros WHERE ativo = true AND id = $1', [id])
     return membro.rows[0];
 }
 
 export async function findAllMembers() {
-    const membros = await query('SELECT id, nome, telefone, instrumento, email, papel, papel_org, papel_ministerio FROM membros WHERE ativo = true');
+    const membros = await query('SELECT id, nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio FROM membros WHERE ativo = true');
     return membros.rows;
 }
 
-export async function updateMember(id: number, name: string, phone: string, instrument: string, email: string, role?: string) {
-    if (role) {
-        // Mantém os dois eixos (spec 02) em sincronia quando o admin troca o papel.
-        const { papelOrg, papelMinisterio } = derivarPapeis(role);
-        const alteracoes = await query(
-            'UPDATE membros SET nome = $1, telefone = $2, instrumento = $3, email = $4, papel = $5, papel_org = $6, papel_ministerio = $7 WHERE id = $8 RETURNING *',
-            [name, phone, instrument, email, role, papelOrg, papelMinisterio, id],
-        );
-        return alteracoes.rows[0];
-    }
-    const alteracoes = await query('UPDATE membros SET nome = $1, telefone = $2, instrumento = $3, email = $4 WHERE id = $5 RETURNING *', [name, phone, instrument, email, id]);
+export async function updateMember(
+    id: number,
+    name: string,
+    phone: string,
+    instruments: string[],
+    email: string,
+    papelOrg: PapelOrg,
+    papelMinisterio: PapelMinisterio | null,
+) {
+    // `papelMinisterio` é sempre recalculado a partir dos instrumentos (também quando
+    // quem edita não é admin) — só `papelOrg` exige a capacidade `membro.papel.alterar`,
+    // já validada no controller antes de chegar aqui.
+    const papelLegado = derivarPapelLegado(papelOrg, papelMinisterio);
+    const alteracoes = await query(
+        'UPDATE membros SET nome = $1, telefone = $2, instrumentos = $3, email = $4, papel = $5, papel_org = $6, papel_ministerio = $7 WHERE id = $8 RETURNING *',
+        [name, phone, instruments, email, papelLegado, papelOrg, papelMinisterio, id],
+    );
     return alteracoes.rows[0];
 }
 

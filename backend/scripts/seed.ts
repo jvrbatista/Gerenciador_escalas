@@ -33,21 +33,21 @@ async function seed() {
     const senha = await bcrypt.hash('senha123', 10);
 
     const admin = (await query(
-        `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
+        `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
          VALUES ($1, $2, $3, $4, 'admin', 'administrador', NULL, $5, $6) RETURNING id`,
-        ['Admin Dev', '11999990000', 'Violão', 'admin@dev.local', senha, orgId],
+        ['Admin Dev', '11999990000', ['Violão'], 'admin@dev.local', senha, orgId],
     )).rows[0];
 
     const vocal1 = (await query(
-        `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
+        `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
          VALUES ($1, $2, $3, $4, 'vocal', 'membro', 'vocal', $5, $6) RETURNING id`,
-        ['Ana Vocal', '11999990001', 'Voz', 'ana@dev.local', senha, orgId],
+        ['Ana Vocal', '11999990001', ['Vocal'], 'ana@dev.local', senha, orgId],
     )).rows[0];
 
     const vocal2 = (await query(
-        `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
+        `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
          VALUES ($1, $2, $3, $4, 'vocal', 'membro', 'vocal', $5, $6) RETURNING id`,
-        ['Bruno Vocal', '11999990002', 'Voz', 'bruno@dev.local', senha, orgId],
+        ['Bruno Vocal', '11999990002', ['Vocal', 'Teclado'], 'bruno@dev.local', senha, orgId],
     )).rows[0];
 
     // Marca o admin como criador da org seed (criado_por).

@@ -16,6 +16,8 @@ export const linking: LinkingOptions<LinkingParamList> = {
   config: {
     screens: {
       Login: 'login',
+      EsqueciSenha: 'esqueci-senha',
+      RedefinirSenha: 'redefinir-senha',
       MainTabs: {
         screens: {
           Home: '',

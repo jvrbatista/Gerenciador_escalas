@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -44,7 +44,7 @@ export function LoginScreen({ navigation }: Props) {
   }
 
   function handleEsqueciSenha() {
-    Alert.alert('Esqueci minha senha', 'Fale com o admin do ministério para redefinir sua senha.');
+    navigation.navigate('EsqueciSenha');
   }
 
   return (

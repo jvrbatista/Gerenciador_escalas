@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Icon } from '@/components/Icon';
+import palhetaIcone from '../../assets/logo/palheta-transparente.png';
 import { radius, typography } from '@/theme';
 import { Cores } from '@/theme/palettes';
 import { useTheme, useThemedStyles } from '@/contexts/ThemeContext';
@@ -10,7 +10,7 @@ interface LogoProps {
   size?: number;
 }
 
-export function Logo({ size = 88 }: LogoProps) {
+export function Logo({ size = 112 }: LogoProps) {
   const { colors, shadows } = useTheme();
   const styles = useThemedStyles(criarEstilos);
   return (
@@ -25,7 +25,11 @@ export function Logo({ size = 88 }: LogoProps) {
           { width: size, height: size, borderRadius: size * 0.28 },
         ]}
       >
-        <Icon name="musical-notes" size={size * 0.5} color={colors.textInverse} />
+        <Image
+          source={palhetaIcone}
+          style={{ width: size * 0.72, height: size * 0.72, tintColor: colors.textInverse }}
+          resizeMode="contain"
+        />
       </LinearGradient>
       <Text style={styles.wordmark}>
         <Text style={styles.wordmarkDark}>Deep</Text>

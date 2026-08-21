@@ -42,7 +42,7 @@ interface NovaOrgComAdmin {
     email: string;
     senhaHash: string;
     telefone: string;
-    instrumento: string;
+    instrumentos: string[];
 }
 
 /**
@@ -66,9 +66,9 @@ export async function criarOrganizacaoComAdmin(dados: NovaOrgComAdmin) {
 
         // O criador da org nasce como Administrador no eixo organizacional (spec 02).
         const membro = (await client.query(
-            `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
+            `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
              VALUES ($1, $2, $3, $4, 'admin', 'administrador', NULL, $5, $6) RETURNING *`,
-            [dados.nome, dados.telefone, dados.instrumento, dados.email, dados.senhaHash, org.id],
+            [dados.nome, dados.telefone, dados.instrumentos, dados.email, dados.senhaHash, org.id],
         )).rows[0];
 
         await client.query('UPDATE organizacoes SET criado_por = $1 WHERE id = $2', [membro.id, org.id]);

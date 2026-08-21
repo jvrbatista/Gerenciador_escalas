@@ -6,6 +6,7 @@ import {
     buscarOrgPorId,
     criarOrganizacaoComAdmin,
 } from '../models/organizacaoModel';
+import { withBypass } from '../config/database';
 import { gerarPrefixo } from '../utils/orgCode';
 import { assinarTokenMembro } from '../utils/token';
 
@@ -14,7 +15,7 @@ import { assinarTokenMembro } from '../utils/token';
  * Fluxo público de cadastro (spec 01, T-01.5).
  */
 export async function criarOrganizacao(req: Request, res: Response) {
-    const { nomeOrg, prefixo, name, email, passwordUser, phone, instrument } = req.body;
+    const { nomeOrg, prefixo, name, email, passwordUser, phone, instruments } = req.body;
 
     if (!nomeOrg || !name || !email || !passwordUser) {
         return res.status(400).json({ message: 'Informe nome da organização, nome, email e senha!' });
@@ -38,7 +39,7 @@ export async function criarOrganizacao(req: Request, res: Response) {
         email,
         senhaHash: hashPassword,
         telefone: phone,
-        instrumento: instrument,
+        instrumentos: instruments ?? [],
     });
 
     const token = assinarTokenMembro({
@@ -61,7 +62,7 @@ export async function criarOrganizacao(req: Request, res: Response) {
  * Fluxo público de cadastro (spec 01, T-01.5).
  */
 export async function entrarComCodigo(req: Request, res: Response) {
-    const { codigo, name, email, passwordUser, phone, instrument } = req.body;
+    const { codigo, name, email, passwordUser, phone, instruments } = req.body;
 
     if (!codigo || !name || !email || !passwordUser) {
         return res.status(400).json({ message: 'Informe o código da organização, nome, email e senha!' });
@@ -79,8 +80,13 @@ export async function entrarComCodigo(req: Request, res: Response) {
 
     const hashPassword = await bcrypt.hash(passwordUser, 10);
 
-    // Quem entra por código nasce como 'membro' (papéis maiores vêm no RBAC — spec 02).
-    const membro = await createMembers(name, phone, instrument, email, 'membro', hashPassword, org.id);
+    // Quem entra por código nasce como 'membro' e sem papel de ministério — os dois
+    // eixos de RBAC são decisão do admin depois, não algo que quem se cadastra escolhe.
+    // Pré-auth e cross-tenant (a org já existe, mas ainda não há sessão dela) — sem
+    // bypass, o RLS fail-closed bloqueia o INSERT (ninguém tem `app.current_org` ainda).
+    const membro = await withBypass((client) =>
+        createMembers(name, phone, instruments ?? [], email, 'membro', null, hashPassword, org.id, client),
+    );
 
     const token = assinarTokenMembro({
         id: membro.id,

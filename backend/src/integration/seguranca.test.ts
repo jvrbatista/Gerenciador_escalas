@@ -43,14 +43,14 @@ async function semearOrg(nome: string, sufixo: string, senhaHash: string): Promi
         )).rows[0];
 
         const admin = (await client.query(
-            `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
-             VALUES ($1, '000', 'Violão', $2, 'admin', 'administrador', NULL, $3, $4) RETURNING id`,
+            `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
+             VALUES ($1, '000', ARRAY['Violão'], $2, 'admin', 'administrador', NULL, $3, $4) RETURNING id`,
             [`Admin ${nome}`, `admin-${sufixo}-${tag}@t.local`, senhaHash, org.id],
         )).rows[0];
 
         const vocal = (await client.query(
-            `INSERT INTO membros (nome, telefone, instrumento, email, papel, papel_org, papel_ministerio, senha, org_id)
-             VALUES ($1, '000', 'Voz', $2, 'vocal', 'membro', 'vocal', $3, $4) RETURNING id`,
+            `INSERT INTO membros (nome, telefone, instrumentos, email, papel, papel_org, papel_ministerio, senha, org_id)
+             VALUES ($1, '000', ARRAY['Vocal'], $2, 'vocal', 'membro', 'vocal', $3, $4) RETURNING id`,
             [`Vocal ${nome}`, `vocal-${sufixo}-${tag}@t.local`, senhaHash, org.id],
         )).rows[0];
 

@@ -26,3 +26,27 @@ export function extrairVideoIdYoutube(url: string): string | null {
   }
   return null;
 }
+
+/**
+ * Busca o título de um vídeo do YouTube via oEmbed (público, sem precisar de API key).
+ * `null` se o link não for do YouTube ou a busca falhar — quem chama decide o que fazer
+ * (ex.: não preencher o nome automaticamente e deixar o usuário digitar).
+ */
+export async function buscarTituloYoutube(url: string): Promise<string | null> {
+  const id = extrairVideoIdYoutube(url);
+  if (!id) {
+    return null;
+  }
+  try {
+    const resposta = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`,
+    );
+    if (!resposta.ok) {
+      return null;
+    }
+    const dados = await resposta.json();
+    return typeof dados.title === 'string' ? dados.title : null;
+  } catch {
+    return null;
+  }
+}

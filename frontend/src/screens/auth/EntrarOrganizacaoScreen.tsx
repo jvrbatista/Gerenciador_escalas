@@ -4,6 +4,7 @@ import { Icon } from '@/components/Icon';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { SeletorInstrumentos } from '@/components/SeletorInstrumentos';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthStackParamList } from '@/navigation/AuthNavigator';
@@ -26,7 +27,7 @@ export function EntrarOrganizacaoScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [instrumento, setInstrumento] = useState('');
+  const [instrumentos, setInstrumentos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +50,7 @@ export function EntrarOrganizacaoScreen({ navigation }: Props) {
         email: email.trim(),
         passwordUser: senha,
         phone: telefone.trim() || undefined,
-        instrument: instrumento.trim() || undefined,
+        instruments: instrumentos.length > 0 ? instrumentos : undefined,
       });
       // Sucesso: o RootNavigator troca pra área logada automaticamente.
     } catch (err) {
@@ -108,13 +109,8 @@ export function EntrarOrganizacaoScreen({ navigation }: Props) {
           onChangeText={setTelefone}
           keyboardType="phone-pad"
         />
-        <Input
-          icon="musical-notes-outline"
-          placeholder="Instrumento (opcional)"
-          value={instrumento}
-          onChangeText={setInstrumento}
-          autoCapitalize="words"
-        />
+        <Text style={styles.label}>Instrumentos/funções (opcional)</Text>
+        <SeletorInstrumentos selecionados={instrumentos} onChange={setInstrumentos} />
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -154,6 +150,11 @@ const criarEstilos = (colors: Cores) => StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: -spacing.xs,
   },
   error: {
     ...typography.bodySmall,

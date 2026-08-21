@@ -51,7 +51,7 @@ function capitalize(text: string): string {
 }
 
 export function AgendaScreen() {
-  const { colors } = useTheme();
+  const { colors, modo } = useTheme();
   const styles = useThemedStyles(criarEstilos);
   const navigation = useNavigation<StackNavigationProp<MainStackParamList>>();
   const [escalaVocal, setEscalaVocal] = useState<MinhaEscalaVocalItem[]>([]);
@@ -218,6 +218,9 @@ export function AgendaScreen() {
       >
         <Card style={styles.calendarCard}>
           <Calendar
+            // `react-native-calendars` não reage bem a mudança de tema via prop depois de
+            // montado — forçar remount na troca de modo garante que a paleta nova aplique.
+            key={modo}
             markedDates={markedDates}
             onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
             theme={{
@@ -287,7 +290,7 @@ export function AgendaScreen() {
         {escalaAvulsa.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Compromissos avulsos</Text>
+              <Text style={styles.sectionTitle}>Compromissos</Text>
             </View>
 
             {escalaAvulsa.map((item) => (

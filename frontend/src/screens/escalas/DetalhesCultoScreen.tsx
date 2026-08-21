@@ -21,6 +21,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Header } from '@/components/Header';
 import { OptionsMenu } from '@/components/OptionsMenu';
+import { SeletorFuncao } from '@/components/SeletorFuncao';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainStackParamList } from '@/navigation/types';
 import * as cultosService from '@/services/cultos';
@@ -31,6 +32,7 @@ import * as excecoesService from '@/services/excecoes';
 import * as membrosService from '@/services/membros';
 import * as repertorioService from '@/services/repertorio';
 import { ApiError } from '@/services/api';
+import { buscarTituloDoLink } from '@/utils/tituloLink';
 import {
   Culto,
   EscalaAvulsaDoCultoItem,
@@ -87,6 +89,7 @@ export function DetalhesCultoScreen() {
   const [novoNomeMusica, setNovoNomeMusica] = useState('');
   const [novoTom, setNovoTom] = useState('');
   const [novoLink, setNovoLink] = useState('');
+  const [buscandoTitulo, setBuscandoTitulo] = useState(false);
   const [salvandoMusica, setSalvandoMusica] = useState(false);
   const [excluindoMusicaId, setExcluindoMusicaId] = useState<number | null>(null);
 
@@ -190,6 +193,21 @@ export function DetalhesCultoScreen() {
     setNovoTom('');
     setNovoLink('');
     setRepertorioModalAberto(true);
+  }
+
+  // Ao sair do campo de link, tenta puxar o título (YouTube ou Spotify) pra
+  // preencher o nome sozinho — outros links não fazem nada, sem erro.
+  async function handleLinkPerdeuFoco() {
+    if (!novoLink.trim()) return;
+    setBuscandoTitulo(true);
+    try {
+      const titulo = await buscarTituloDoLink(novoLink.trim());
+      if (titulo) {
+        setNovoNomeMusica(titulo);
+      }
+    } finally {
+      setBuscandoTitulo(false);
+    }
   }
 
   async function handleAdicionarMusica() {
@@ -655,14 +673,15 @@ export function DetalhesCultoScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Adicionar música</Text>
 
-            <View style={styles.modalInput}>
+            <View style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center' }]}>
               <TextInput
-                style={styles.modalTextInput}
+                style={[styles.modalTextInput, { flex: 1 }]}
                 placeholder="Nome da música"
                 placeholderTextColor={colors.textMuted}
                 value={novoNomeMusica}
                 onChangeText={setNovoNomeMusica}
               />
+              {buscandoTitulo && <ActivityIndicator size="small" color={colors.primary} />}
             </View>
             <View style={styles.modalInput}>
               <TextInput
@@ -680,10 +699,14 @@ export function DetalhesCultoScreen() {
                 placeholderTextColor={colors.textMuted}
                 value={novoLink}
                 onChangeText={setNovoLink}
+                onBlur={handleLinkPerdeuFoco}
                 autoCapitalize="none"
                 keyboardType="url"
               />
             </View>
+            <Text style={styles.linkDica}>
+              Link do YouTube ou Spotify? O nome da música é preenchido automaticamente.
+            </Text>
 
             <Button
               title="Adicionar"
@@ -720,15 +743,7 @@ export function DetalhesCultoScreen() {
                 {novoMembroEquipe ? novoMembroEquipe.nome : 'Selecionar membro'}
               </Text>
             </TouchableOpacity>
-            <View style={styles.modalInput}>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="Função (ex: Baixo, Ministro)"
-                placeholderTextColor={colors.textMuted}
-                value={novaFuncaoEquipe}
-                onChangeText={setNovaFuncaoEquipe}
-              />
-            </View>
+            <SeletorFuncao selecionado={novaFuncaoEquipe || null} onChange={setNovaFuncaoEquipe} />
 
             <Button
               title="Adicionar"
@@ -1040,6 +1055,11 @@ const criarEstilos = (colors: Cores) => StyleSheet.create({
   modalPlaceholder: {
     ...typography.body,
     color: colors.textMuted,
+  },
+  linkDica: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: -spacing.xs,
   },
   modalButton: {
     marginTop: spacing.xs,

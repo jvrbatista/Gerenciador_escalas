@@ -8,7 +8,7 @@ export interface CriarOrganizacaoInput {
   email: string;
   passwordUser: string;
   phone?: string;
-  instrument?: string;
+  instruments?: string[];
 }
 
 export interface EntrarOrganizacaoInput {
@@ -17,7 +17,7 @@ export interface EntrarOrganizacaoInput {
   email: string;
   passwordUser: string;
   phone?: string;
-  instrument?: string;
+  instruments?: string[];
 }
 
 export interface OrganizacaoResumo {

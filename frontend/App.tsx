@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { InitialState, NavigationContainer } from '@react-navigation/native';
@@ -26,6 +26,30 @@ export default function App() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
   });
+
+  useEffect(() => {
+    // Web: o navegador força um fundo branco/amarelo nos campos com autofill (login
+    // salvo), ignorando o `backgroundColor` do `Input`. Não dá pra sobrescrever com
+    // StyleSheet (é pseudo-classe do navegador) — atrasa a transição quase pro
+    // infinito, então o fundo do navegador nunca chega a aparecer visualmente.
+    // A cor do TEXTO fica por conta do `Input.tsx` (WebkitTextFillColor inline) — não
+    // repete aqui com `!important`, porque isso sobrescreveria o valor inline.
+    if (Platform.OS === 'web') {
+      const style = document.createElement('style');
+      style.textContent = `
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          transition: background-color 9999s ease-in-out 0s !important;
+        }
+      `;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     async function restoreState() {

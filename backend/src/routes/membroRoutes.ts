@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { cadastrarUser, myProfile, getMemberById, updateMemberController, deactivateMemberController, updatePasswordController } from '../controllers/membroController';
+import { cadastrarUser, myProfile, getMemberById, updateMemberController, deactivateMemberController, updatePasswordController, esqueciSenhaController, redefinirSenhaController } from '../controllers/membroController';
 import { loginUser } from '../controllers/membroController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { autoriza } from '../middlewares/roleMiddleware';
@@ -9,6 +9,8 @@ const router = Router();
 
 router.post('/cadastro', authMiddleware, autoriza('membro.cadastrar'),cadastrarUser);
 router.post('/login', loginUser);
+router.post('/esqueci-senha', esqueciSenhaController);
+router.post('/redefinir-senha', redefinirSenhaController);
 router.get('/me', authMiddleware, myProfile);
 router.get('/', authMiddleware, autoriza('membro.listar'), listAllMembers);
 router.get('/:id', authMiddleware, getMemberById)

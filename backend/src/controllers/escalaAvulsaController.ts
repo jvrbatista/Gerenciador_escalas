@@ -4,6 +4,7 @@ import { findById, findAdminsAtivos } from '../models/membroModel';
 import { findCultoById } from '../models/cultoModel';
 import { createNotificacao } from '../models/notificacaoModel';
 import { enviarEmail } from '../services/emailService';
+import { formatarDataHoraCurta } from '../utils/data';
 
 export async function createEscalaAvulsaController(req: Request, res: Response) {
     try {
@@ -22,7 +23,7 @@ export async function createEscalaAvulsaController(req: Request, res: Response) 
                 await enviarEmail(
                     membro.email,
                     'Você foi escalado para um culto!',
-                    `Olá ${membro.nome}, você foi escalado como "${funcao}" para o culto do dia ${culto.data_hora}.`
+                    `Olá ${membro.nome}, você foi escalado como "${funcao}" para o culto do dia ${formatarDataHoraCurta(culto.data_hora)}.`
                 );
             } catch (error) {
                 console.error('Erro ao enviar email:', error);
@@ -32,7 +33,7 @@ export async function createEscalaAvulsaController(req: Request, res: Response) 
                     membroId,
                     'escala',
                     'Nova escala publicada',
-                    `Você foi escalado como "${funcao}" para o culto do dia ${culto.data_hora}.`
+                    `Você foi escalado como "${funcao}" para o culto do dia ${formatarDataHoraCurta(culto.data_hora)}.`
                 );
             } catch (error) {
                 console.error('Erro ao criar notificação:', error);

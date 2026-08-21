@@ -19,6 +19,7 @@ module.exports = [
         process: 'readonly',
         localStorage: 'readonly',
         window: 'readonly',
+        document: 'readonly',
         globalThis: 'readonly',
         navigator: 'readonly',
         console: 'readonly',

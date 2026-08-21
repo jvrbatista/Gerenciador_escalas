@@ -77,6 +77,16 @@ const criarEstilos = (colors: Cores) => StyleSheet.create({
     flex: 1,
     ...typography.body,
     color: colors.text,
-    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
+    ...(Platform.OS === 'web'
+      ? ({
+          outlineStyle: 'none',
+          // O autofill do navegador (login salvo) pinta o texto com a própria cor
+          // dele, ignorando `color` — só o `-webkit-text-fill-color` sobrescreve
+          // isso de verdade. Fixa explícito (não currentColor) pra não depender
+          // de como o navegador resolve a cascata dentro do estado de autofill.
+          WebkitTextFillColor: colors.text,
+          caretColor: colors.text,
+        } as object)
+      : null),
   },
 });

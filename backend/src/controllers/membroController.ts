@@ -3,12 +3,13 @@ import { query } from '../config/database';
 import { Request, Response } from 'express';
 import { createMembers, deactivateMember } from '../models/membroModel';
 import { findByEmail, findById, findAllMembers, updateMember, findByIdComSenha, updatePassword } from '../models/membroModel';
-import { assinarTokenMembro } from '../utils/token';
-import { podeAcessar, mesmoUsuario } from '../config/capacidades';
+import { assinarTokenMembro, assinarTokenResetSenha, verificarTokenResetSenha } from '../utils/token';
+import { podeAcessar, mesmoUsuario, PapelOrg, PapelMinisterio } from '../config/capacidades';
+import { enviarEmail } from '../services/emailService';
 
 
 export async function cadastrarUser(req: Request, res: Response) {
-    const {name, email, passwordUser, role, instrument, phone} = req.body
+    const {name, email, passwordUser, papelOrg, papelMinisterio, instruments, phone} = req.body
 
     if (!req.orgId) {
         return res.status(401).json({message: 'Não autenticado!'})
@@ -23,7 +24,7 @@ export async function cadastrarUser(req: Request, res: Response) {
     const hashPassword = await bcrypt.hash(passwordUser, 10)
 
     // Novo membro nasce na organização do admin que o cadastra.
-    await createMembers (name, phone, instrument, email, role, hashPassword, req.orgId);
+    await createMembers (name, phone, instruments ?? [], email, (papelOrg as PapelOrg) ?? 'membro', (papelMinisterio as PapelMinisterio) ?? null, hashPassword, req.orgId);
 
     return res.status(201).json({message: 'Usuario cadastrado com sucesso!'})
 }
@@ -92,7 +93,7 @@ export async function getMemberById(req: Request, res: Response) {
 
 export async function updateMemberController (req: Request, res: Response) {
     const id = Number(req.params.id);
-    const {name, phone, instrument, email, role} = req.body;
+    const {name, phone, instruments, email, papelOrg, papelMinisterio} = req.body;
 
     if ( !req.user ) {
         return res.status(401).json({message: 'Não autenticado!'})
@@ -105,8 +106,10 @@ export async function updateMemberController (req: Request, res: Response) {
         return res.status(403).json({message: 'Não autorizado!'})
     }
 
-    // Alterar o papel é exclusivo de quem tem a capacidade (administrador).
-    if (role && !podeAcessar(usuario, 'membro.papel.alterar')) {
+    // Alterar o papel (organização OU ministério) é exclusivo de quem tem a
+    // capacidade (administrador) — os dois eixos são decisões deliberadas, não
+    // algo que se deriva de outro campo (ex.: instrumentos).
+    if ((papelOrg || papelMinisterio !== undefined) && !podeAcessar(usuario, 'membro.papel.alterar')) {
         return res.status(403).json({message: 'Só admin pode alterar o papel!'})
     }
 
@@ -117,11 +120,30 @@ export async function updateMemberController (req: Request, res: Response) {
         }
     }
 
-    if (!name || !phone || !instrument || !email) {
+    if (!name || !phone || !instruments || instruments.length === 0 || !email) {
         return res.status(400).json({message: 'Todos os campos devem ser preechidos!'})
     }
 
-    await updateMember(id, name, phone, instrument, email, role);
+    // Papel na organização/ministério: o novo (se quem edita pode alterá-lo) ou o
+    // atual do membro (senão — ex.: a própria pessoa só editando os instrumentos).
+    // `papelMinisterio === undefined` = campo nem veio no corpo (não mexeu nele);
+    // `null` é um valor válido (explicitamente "nenhum").
+    let papelOrgEfetivo: PapelOrg = papelOrg;
+    let papelMinisterioEfetivo: PapelMinisterio | null = papelMinisterio ?? null;
+    if (!papelOrgEfetivo || papelMinisterio === undefined) {
+        const atual = await findById(id);
+        if (!atual) {
+            return res.status(404).json({message: 'Membro não encontrado!'})
+        }
+        if (!papelOrgEfetivo) {
+            papelOrgEfetivo = atual.papel_org;
+        }
+        if (papelMinisterio === undefined) {
+            papelMinisterioEfetivo = atual.papel_ministerio ?? null;
+        }
+    }
+
+    await updateMember(id, name, phone, instruments, email, papelOrgEfetivo, papelMinisterioEfetivo);
 
     return res.status(200).json({message: 'Alterações realizadas com sucesso!'})
 }
@@ -130,6 +152,57 @@ export async function deactivateMemberController(req: Request, res: Response) {
     const id = Number(req.params.id);
     await deactivateMember(id, false)
     return res.status(200).json({message: 'Membro desativado com sucesso!'})
+}
+
+export async function esqueciSenhaController(req: Request, res: Response) {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: 'Informe o e-mail!' });
+    }
+
+    const membro = await findByEmail(email);
+
+    // Não revela se o e-mail existe ou não (evita enumeração de contas) — a
+    // resposta é sempre a mesma, o e-mail só sai se o membro existir de fato.
+    if (membro) {
+        const token = assinarTokenResetSenha(membro.id);
+        const link = `${process.env.FRONTEND_URL}/redefinir-senha?token=${token}`;
+        await enviarEmail(
+            membro.email,
+            'Redefinir senha — Deep Scales',
+            `<p>Olá, ${membro.nome}!</p>
+             <p>Clique no link abaixo para escolher uma nova senha. Ele vale por 30 minutos:</p>
+             <p><a href="${link}">${link}</a></p>
+             <p>Se você não pediu isso, pode ignorar este e-mail.</p>`,
+        );
+    }
+
+    return res.status(200).json({ message: 'Se o e-mail existir, enviamos um link de redefinição.' });
+}
+
+export async function redefinirSenhaController(req: Request, res: Response) {
+    const { token, novaSenha } = req.body;
+
+    if (!token || !novaSenha) {
+        return res.status(400).json({ message: 'Informe o token e a nova senha!' });
+    }
+
+    if (novaSenha.length < 6) {
+        return res.status(400).json({ message: 'A nova senha deve ter pelo menos 6 caracteres!' });
+    }
+
+    let dados;
+    try {
+        dados = verificarTokenResetSenha(token);
+    } catch {
+        return res.status(400).json({ message: 'Link inválido ou expirado. Peça um novo.' });
+    }
+
+    const hashPassword = await bcrypt.hash(novaSenha, 10);
+    await updatePassword(dados.id, hashPassword);
+
+    return res.status(200).json({ message: 'Senha redefinida com sucesso!' });
 }
 
 export async function updatePasswordController(req: Request, res: Response) {

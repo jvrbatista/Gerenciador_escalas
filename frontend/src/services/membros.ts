@@ -1,13 +1,15 @@
 import { api } from './api';
-import { Membro, Papel } from '@/types';
+import { Membro, PapelOrg, PapelMinisterio } from '@/types';
 
 export interface AtualizarMembroInput {
   name: string;
   phone: string;
-  instrument: string;
+  instruments: string[];
   email: string;
-  /** Só é aplicado de fato pelo back-end se quem chama for admin. */
-  role?: Papel;
+  /** Papel na organização — só é aplicado de fato pelo back-end se quem chama for admin. */
+  papelOrg?: PapelOrg;
+  /** Papel no ministério — mesma regra do papelOrg (só admin de fato aplica). `null` = nenhum. */
+  papelMinisterio?: PapelMinisterio | null;
 }
 
 export interface AlterarSenhaInput {
@@ -15,12 +17,18 @@ export interface AlterarSenhaInput {
   novaSenha: string;
 }
 
+export interface RedefinirSenhaInput {
+  token: string;
+  novaSenha: string;
+}
+
 export interface CadastrarMembroInput {
   name: string;
   email: string;
   passwordUser: string;
-  role: Papel;
-  instrument: string;
+  papelOrg: PapelOrg;
+  papelMinisterio: PapelMinisterio | null;
+  instruments: string[];
   phone: string;
 }
 
@@ -69,6 +77,21 @@ export async function desativarMembro(id: number): Promise<void> {
  */
 export async function alterarSenha(id: number, input: AlterarSenhaInput): Promise<void> {
   await api.put(`/membros/${id}/senha`, input);
+}
+
+/**
+ * Pede o e-mail de redefinição de senha. A resposta é sempre "sucesso" (o
+ * back-end não revela se o e-mail existe, pra evitar enumeração de contas).
+ */
+export async function esqueciSenha(email: string): Promise<void> {
+  await api.post('/membros/esqueci-senha', { email });
+}
+
+/**
+ * Redefine a senha a partir do token recebido por e-mail (válido por 30min).
+ */
+export async function redefinirSenha(input: RedefinirSenhaInput): Promise<void> {
+  await api.post('/membros/redefinir-senha', input);
 }
 
 /**

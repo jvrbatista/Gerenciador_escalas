@@ -56,7 +56,7 @@ export interface Membro {
   papel_org?: PapelOrg;
   /** Eixo musical (escalas) — spec 02. */
   papel_ministerio?: PapelMinisterio | null;
-  instrumento: string | null;
+  instrumentos: string[];
   ativo?: boolean;
 }
 

@@ -30,3 +30,30 @@ export function assinarTokenMembro(membro: DadosTokenMembro): string {
         { expiresIn: '1d' },
     );
 }
+
+/**
+ * Token de redefinição de senha ("esqueci minha senha") — curta duração e uma
+ * `finalidade` própria, pra não poder ser reaproveitado como token de sessão.
+ */
+export function assinarTokenResetSenha(membroId: number): string {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET não configurado');
+    }
+    return jwt.sign(
+        { id: membroId, finalidade: 'reset-senha' },
+        process.env.JWT_SECRET,
+        { expiresIn: '30m' },
+    );
+}
+
+/** Valida o token de reset e devolve o id do membro. Lança se inválido/expirado/errado. */
+export function verificarTokenResetSenha(token: string): { id: number } {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET não configurado');
+    }
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (typeof payload !== 'object' || payload.finalidade !== 'reset-senha' || typeof payload.id !== 'number') {
+        throw new Error('Token inválido');
+    }
+    return { id: payload.id };
+}
